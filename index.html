@@ -553,70 +553,67 @@
             const loadId = showGeminiLoader();
             try {
                 const resp = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
                     {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             contents: [{
                                 parts: [
-                                    {
-                                        inline_data: { mime_type: "image/jpeg", data: base64img }
-                                    },
-                                    {
-                                        text: `Sos un asistente de fitness. Analizá esta imagen de una pizarra de entrenamiento funcional.
-Extraé TODOS los ejercicios que aparecen. Para cada uno, asigná:
-- nombre: el nombre del ejercicio con sus repeticiones/tiempo si aparece (ej: "15 Kettlebell Swings")
-- categoria: una de [EMPUJE, TRACCIÓN, PIERNAS, CORE, CARDIO]
-- reps: solo las repeticiones o tiempo (ej: "15 reps", "30 seg", "400m")
-
-Respondé SOLO con JSON válido, sin texto extra, sin backticks:
-{"ejercicios": [{"nombre": "...", "categoria": "...", "reps": "..."}], "sistema": "AMRAP o EMOM o TABATA o CIRCUITO VUELTAS o LIBRE"}`
-                                    }
+                                    { inline_data: { mime_type: "image/jpeg", data: base64img } },
+                                    { text: "Sos un asistente de fitness. Analiza esta imagen de una pizarra de entrenamiento. Extrae TODOS los ejercicios. Para cada uno: nombre (con reps si aparece), categoria (EMPUJE/TRACCION/PIERNAS/CORE/CARDIO), reps. Responde UNICAMENTE JSON sin texto extra ni backticks: {\"ejercicios\":[{\"nombre\":\"...\",\"categoria\":\"...\",\"reps\":\"...\"}],\"sistema\":\"AMRAP\"}" }
                                 ]
-                            }]
+                            }],
+                            generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
                         })
                     }
                 );
+
+                if (!resp.ok) {
+                    const errData = await resp.json().catch(() => ({}));
+                    throw new Error(errData?.error?.message || 'HTTP ' + resp.status);
+                }
+
                 const data = await resp.json();
                 hideGeminiLoader(loadId);
+                console.log('Gemini OK:', JSON.stringify(data).substring(0, 400));
 
-                if (data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                    let raw = data.candidates[0].content.parts[0].text.trim();
-                    raw = raw.replace(/```json|```/g, '').trim();
-                    const parsed = JSON.parse(raw);
-
-                    if (parsed.sistema) {
-                        const sel = document.getElementById('ocrSistema');
-                        for (let i = 0; i < sel.options.length; i++) {
-                            if (sel.options[i].value === parsed.sistema) { sel.selectedIndex = i; break; }
-                        }
-                    }
-
-                    ejerciciosFormulario = [];
-                    renderizarFilasEjercicios();
-                    parsed.ejercicios.forEach(ej => agregarEjercicioFila(ej.nombre, ej.categoria, ej.reps));
-
-                    // Auto-detectar material
-                    const todosTxt = parsed.ejercicios.map(e => e.nombre).join(', ');
-                    const mats = detectarMateriales(todosTxt);
-                    if (mats.length) {
-                        document.getElementById('ocrMaterial').value = mats.join(', ');
-                        addChatMessage(`<span class="text-green-400">✓ Gemini detectó ${parsed.ejercicios.length} ejercicios</span> y material: <strong>${mats.join(', ')}</strong>`);
-                    } else {
-                        addChatMessage(`<span class="text-green-400">✓ Gemini detectó ${parsed.ejercicios.length} ejercicios.</span> Confirmá el material manualmente.`);
-                    }
-                } else {
-                    throw new Error("Respuesta vacía de Gemini");
+                if (data.promptFeedback?.blockReason) {
+                    throw new Error('Imagen bloqueada: ' + data.promptFeedback.blockReason);
                 }
+
+                const textPart = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!textPart) {
+                    throw new Error('Sin respuesta. Razon: ' + (data.candidates?.[0]?.finishReason || '?'));
+                }
+
+                let raw = textPart.trim().replace(/```json|```/g, '').trim();
+                const match = raw.match(/\{[\s\S]*\}/);
+                if (match) raw = match[0];
+
+                const parsed = JSON.parse(raw);
+                if (!parsed.ejercicios?.length) throw new Error('No se encontraron ejercicios');
+
+                ejerciciosFormulario = [];
+                renderizarFilasEjercicios();
+                parsed.ejercicios.forEach(ej => {
+                    let cat = (ej.categoria || 'CORE').toUpperCase().replace('TRACCION', 'TRACCIÓN');
+                    if (!['EMPUJE','TRACCIÓN','PIERNAS','CORE','CARDIO'].includes(cat)) cat = 'CORE';
+                    agregarEjercicioFila(ej.nombre, cat, ej.reps || '');
+                });
+
+                const todosTxt = parsed.ejercicios.map(e => e.nombre).join(', ');
+                const mats = detectarMateriales(todosTxt);
+                if (mats.length) document.getElementById('ocrMaterial').value = mats.join(', ');
+                addChatMessage('<span style="color:var(--c-green)">✓ Gemini detectó <strong>' + parsed.ejercicios.length + ' ejercicios</strong></span>' + (mats.length ? ' — Material: <strong>' + mats.join(', ') + '</strong>' : '. Confirmá el material.'));
+
             } catch (err) {
                 hideGeminiLoader(loadId);
-                addChatMessage(`<span class="text-red-400">⚠️ Error al procesar con Gemini.</span> Completá los ejercicios manualmente.`);
-                console.error(err);
-                agregarEjercicioFila('Ejercicio 1', 'EMPUJE', '10 reps');
+                console.error('Gemini error:', err);
+                addChatMessage('<span style="color:#ef4444">⚠️ Gemini: ' + err.message + '</span> — Completá los ejercicios manualmente.');
+                if (ejerciciosFormulario.length === 0) agregarEjercicioFila('Ejercicio 1', 'EMPUJE', '10 reps');
             }
         }
-
         function showGeminiLoader() {
             const id = 'loader_' + Date.now();
             const chat = document.getElementById('chatBox');
