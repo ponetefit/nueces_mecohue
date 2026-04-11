@@ -433,7 +433,6 @@
 
         // ─── OPENROUTER CONFIG ────────────────────────────────────────────
         // Registrate gratis en openrouter.ai → Keys → Create Key
-        // Los modelos :free no gastan créditos
         const OPENROUTER_API_KEY = "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";
         const VISION_MODELS = [
             "google/gemini-2.0-flash-exp:free",
@@ -546,10 +545,10 @@
                 document.getElementById('ocrResult').classList.remove('hidden');
                 document.getElementById('ocrNombre').value = "Sesión " + new Date().toLocaleDateString('es-AR');
 
-                if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "") {
+                if (OPENROUTER_API_KEY && OPENROUTER_API_KEY !== "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") {
                     await procesarConVision(base64.split(',')[1]);
                 } else {
-                    addChatMessage(`<div class="flex items-center gap-2 text-amber-400 text-xs">⚠️ Configurá tu OpenRouter API key en el código. Completá los ejercicios manualmente.</div>`);
+                    addChatMessage(`<div class="flex items-center gap-2 text-amber-400 text-xs">⚠️ Configurá tu OpenRouter API key. Completá los ejercicios manualmente.</div>`);
                     agregarEjercicioFila('Escribí el ejercicio aquí', 'EMPUJE', '10 reps');
                 }
             };
@@ -558,26 +557,26 @@
 
         async function procesarConVision(base64img) {
             const loadId = showGeminiLoader();
-            const prompt = "Analiza esta imagen de una pizarra de entrenamiento funcional. Extrae TODOS los ejercicios y devuélvelos estrictamente en este formato JSON sin texto extra ni backticks: {\"ejercicios\": [{\"nombre\": \"...\", \"categoria\": \"...\", \"reps\": \"...\"}], \"sistema\": \"AMRAP\"}. Categorias posibles: EMPUJE, TRACCION, PIERNAS, CORE, CARDIO.";
+            const prompt = 'Analiza esta imagen de una pizarra de entrenamiento funcional. Extrae TODOS los ejercicios y devuélvelos estrictamente en este formato JSON sin texto extra ni backticks: {"ejercicios": [{"nombre": "...", "categoria": "...", "reps": "..."}], "sistema": "AMRAP"}. Categorias posibles: EMPUJE, TRACCION, PIERNAS, CORE, CARDIO.';
 
             for (let i = 0; i < VISION_MODELS.length; i++) {
                 const model = VISION_MODELS[i];
                 try {
-                    addChatMessage(\`<span class="text-slate-400 text-xs">🔄 Intentando con <strong>\${model.split('/')[1]}</strong>...</span>\`);
+                    addChatMessage('<span class="text-slate-400 text-xs">🔄 Intentando con <strong>' + model.split('/')[1] + '</strong>...</span>');
                     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Authorization": \`Bearer \${OPENROUTER_API_KEY}\`,
+                            "Authorization": "Bearer " + OPENROUTER_API_KEY,
                             "HTTP-Referer": window.location.origin,
-                            "X-Title": "Ponete Fitness"
+                            "X-Title": "CoachCloud Pro"
                         },
                         body: JSON.stringify({
                             model: model,
                             messages: [{
                                 role: "user",
                                 content: [
-                                    { type: "image_url", image_url: { url: \`data:image/jpeg;base64,\${base64img}\` } },
+                                    { type: "image_url", image_url: { url: "data:image/jpeg;base64," + base64img } },
                                     { type: "text", text: prompt }
                                 ]
                             }]
@@ -586,7 +585,7 @@
 
                     const data = await response.json();
                     if (data.error) throw new Error(data.error.message);
-                    const text = data.choices?.[0]?.message?.content;
+                    const text = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
                     if (!text) throw new Error("Sin respuesta del modelo.");
 
                     let raw = text.replace(/```json|```/g, "").trim();
@@ -594,7 +593,7 @@
                     if (match) raw = match[0];
 
                     const parsed = JSON.parse(raw);
-                    if (!parsed.ejercicios?.length) throw new Error("No se encontraron ejercicios.");
+                    if (!parsed.ejercicios || !parsed.ejercicios.length) throw new Error("No se encontraron ejercicios.");
 
                     hideGeminiLoader(loadId);
 
@@ -607,26 +606,26 @@
 
                     ejerciciosFormulario = [];
                     renderizarFilasEjercicios();
-                    parsed.ejercicios.forEach(ej => {
+                    parsed.ejercicios.forEach(function(ej) {
                         let cat = (ej.categoria || "CORE").toUpperCase().replace("TRACCION", "TRACCIÓN").replace("MOVILIDAD", "CORE");
                         if (!["EMPUJE","TRACCIÓN","PIERNAS","CORE","CARDIO"].includes(cat)) cat = "CORE";
                         agregarEjercicioFila(ej.nombre, cat, ej.reps || "");
                     });
 
-                    const todosTxt = parsed.ejercicios.map(e => e.nombre).join(", ");
+                    const todosTxt = parsed.ejercicios.map(function(e) { return e.nombre; }).join(", ");
                     const mats = detectarMateriales(todosTxt);
                     if (mats.length) document.getElementById("ocrMaterial").value = mats.join(", ");
 
-                    addChatMessage(\`<span style="color:var(--c-green)">✅ \${model.split("/")[1]} digitalizó <strong>\${parsed.ejercicios.length} ejercicios</strong></span>\` + (mats.length ? \` — Material: <strong>\${mats.join(", ")}</strong>\` : ". Confirmá el material."));
-                    return; // éxito, salir del loop
+                    addChatMessage('<span style="color:var(--c-green)">✅ ' + model.split("/")[1] + ' digitalizó <strong>' + parsed.ejercicios.length + ' ejercicios</strong></span>' + (mats.length ? ' — Material: <strong>' + mats.join(", ") + '</strong>' : '. Confirmá el material.'));
+                    return;
 
-                } catch (err) {
-                    console.warn(\`Modelo \${model} falló:\`, err.message);
+                } catch(err) {
+                    console.warn("Modelo " + model + " falló:", err.message);
                     if (i < VISION_MODELS.length - 1) {
-                        addChatMessage(\`<span class="text-amber-400 text-xs">⚠️ \${model.split("/")[1]}: \${err.message}. Probando siguiente modelo...</span>\`);
+                        addChatMessage('<span class="text-amber-400 text-xs">⚠️ ' + model.split("/")[1] + ': ' + err.message + '. Probando siguiente...</span>');
                     } else {
                         hideGeminiLoader(loadId);
-                        addChatMessage(\`<span style="color:#ef4444">⚠️ Todos los modelos fallaron. Último error: \${err.message}</span> — Completá los ejercicios manualmente.\`);
+                        addChatMessage('<span style="color:#ef4444">⚠️ Todos los modelos fallaron: ' + err.message + '</span> — Completá los ejercicios manualmente.');
                         if (ejerciciosFormulario.length === 0) agregarEjercicioFila("Ejercicio 1", "EMPUJE", "10 reps");
                     }
                 }
@@ -1072,11 +1071,10 @@
                     <h2 class="font-condensed" style="font-size:16px;font-weight:800;letter-spacing:.04em">CARGAR PIZARRA</h2>
                 </div>
 
-                <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="procesarImagen(event)">
-
                 <!-- Drop Zone -->
-                <div id="dropZone" onclick="seleccionarArchivo()"
-                    style="padding:32px 20px;text-align:center">
+                <div id="dropZone" style="padding:32px 20px;text-align:center;position:relative">
+                    <input type="file" id="fileInput" accept="image/*" onchange="procesarImagen(event)"
+                        style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10">
                     <div style="width:52px;height:52px;background:var(--c-surface2);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px">📷</div>
                     <p style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:.04em;margin-bottom:4px">Subí la foto del entrenamiento</p>
                     <p style="font-size:11px;color:var(--c-muted)">JPG, PNG — o arrastrá acá</p>
