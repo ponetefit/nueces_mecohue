@@ -552,7 +552,7 @@
 
         async function procesarConGemini(base64img) {
             const loadId = showGeminiLoader();
-            const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
             const prompt = "Analiza esta imagen de una pizarra de entrenamiento funcional. Extrae TODOS los ejercicios y devuélvelos estrictamente en este formato JSON sin texto extra ni backticks: {\"ejercicios\": [{\"nombre\": \"...\", \"categoria\": \"...\", \"reps\": \"...\"}], \"sistema\": \"AMRAP\"}. Categorias posibles: EMPUJE, TRACCION, PIERNAS, CORE, CARDIO.";
 
             try {
