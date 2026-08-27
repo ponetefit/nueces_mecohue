@@ -153,6 +153,15 @@
             </select>
           </div>
 
+           <!-- Mix Ingredients Information -->
+           <div id="mix-description" class="hidden bg-emerald-950/30 border border-emerald-800/50 rounded-2xl p-4">
+             <div class="flex items-center gap-2 text-xs font-bold text-emerald-300 uppercase tracking-wider mb-1.5">
+               <span>🥣</span>
+               <span>¿Qué contiene este mix?</span>
+             </div>
+             <p id="mix-description-text" class="text-sm leading-relaxed text-emerald-100/80"></p>
+           </div>
+
           <!-- Presentation Selection -->
           <div>
             <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">4. Presentación / Calibre</label>
@@ -720,6 +729,38 @@
       { category: "OTROS", name: "Potasio - Magnesio \"Vitatech\"", presentacion: "Caja x 60 capsulas", precio: 8010 }
     );
 
+    const mixDescriptions = {
+      "Mix de Semillas": "Semillas de chía, sésamo, girasol y lino.",
+      "Mix de Semillas (Bolsón)": "Semillas de chía, sésamo, girasol y lino.",
+      "Mix Energía": "Nueces, almendras, pasas rubias y morenas y maní.",
+      "Mix Energía con Banana": "Nueces, almendras, pasas rubias y morenas, maní y chips de banana.",
+      "Mix Desayuno": "Granola Mecohué, copos naturales, fibra de salvado, chips de banana, cubos sabor ananá y pasas de uva morenas.",
+      "Mix Granola \"Mecohue\"": "Copos de maíz, pasas de uva morochas, semillas de girasol y de chía, lino, sésamo, avena y miel.",
+      "Mix Granola New Deportiva": "Avena tostada con miel, maní, semillas de girasol y copos de maíz.",
+      "Mix Granola Tradicional \"Nutrinola\"": "Avena, miel, pasas de uva, maní, semillas de girasol, lino, chía, nueces, almendras, aceite y esencia de vainilla.",
+      "Mix Granola Base \"Nutrinola\"": "Avena, azúcar mascabo, maní, girasol y aceite de girasol.",
+      "Mix Granola Cocada \"Nutrinola\"": "Avena, copos sin azúcar, azúcar mascabo, maní, coco rallado, semillas de girasol, arroz inflado, trigo inflado, nueces, aceite y esencia de vainilla.",
+      "Mix Nutrición": "Nueces, almendras, avena, semillas de girasol y zapallo, copos naturales y pasas de uva rubias y morenas.",
+      "Mix Tropical": "Nueces, almendras Non Pareil, chips de banana, pasas rubias y morenas, cubos sabor ananá y maní.",
+      "Mix Running": "Nueces, almendras, chips de banana y maní.",
+      "Mix Forte": "Nueces, almendras, castañas de cajú, maníes y semillas de girasol.",
+      "Mix Duo": "Nueces y almendras.",
+      "Mix Navideño": "Nueces, almendras, castañas de cajú, avellanas, pasas morochas y fruta abrillantada en cubos.",
+      "Mix Suizo": "Nueces, almendras Non Pareil, castañas de cajú, pasas y almendras con chocolate.",
+      "Mix Power": "Nueces, almendras, castañas de cajú, chips de banana y pasas de uva morenas.",
+      "Mix Seleccion (Ex Premium)": "Nueces, almendras, castañas de cajú y avellanas.",
+      "Mix Caribe": "Almendras, castañas de cajú, chips de banana, papaya en cubos y coco en cubos.",
+      "Mix Andino": "Almendras Non Pareil, pasas de uva morenas y rubias, garrapiñada de maní, maíz frito y semillas de zapallo.",
+      "Mix Break": "Nueces, almendras, chips de banana, arándanos y cubos sabor ananá.",
+      "Mix Pasiones (Ex Afrodisiaco)": "Nueces, almendras, arándanos, higos negros, jengibre caramelizado y coco en escamas.",
+      "Mix Europeo": "Nueces, almendras Non Pareil, castañas de cajú, chips de banana, pasas morenas y maníes.",
+      "Mix Patagónico": "Nueces, almendras, manzanas en cubos y arándanos.",
+      "Mix Classic": "Nueces, almendras Non Pareil y maníes.",
+      "Mix Explosion de Sabores": "Almendras, chips de banana, pasas de uva rubias y morenas, cubos sabor ananá, maní salado y maní con chocolate.",
+      "Mix Qatar": "Almendras y castañas de cajú tostadas y saladas, maní salado, maní crocante y maíz frito.",
+      "Mix de Cereales LASFOR": "Copos sin azúcar, avena, quinoa inflada, bastones de salvado, pasas de uva y manzana en cubos."
+    };
+
     let groupedProducts = {};
     let currentCategory = "TODAS";
     let currentCart = [];
@@ -824,6 +865,16 @@
       const prodName = document.getElementById('product-select').value;
       const presSelect = document.getElementById('presentation-select');
       const unitPriceInput = document.getElementById('unit-price-input');
+      const mixDescriptionBox = document.getElementById('mix-description');
+      const mixDescriptionText = document.getElementById('mix-description-text');
+
+      if (mixDescriptions[prodName]) {
+        mixDescriptionText.textContent = mixDescriptions[prodName];
+        mixDescriptionBox.classList.remove('hidden');
+      } else {
+        mixDescriptionText.textContent = '';
+        mixDescriptionBox.classList.add('hidden');
+      }
       
       presSelect.innerHTML = '<option value="">-- Selecciona presentación --</option>';
       unitPriceInput.value = '';
